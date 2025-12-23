@@ -173,7 +173,22 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
     setLoadingSubmit(true);
 
     try {
-      // Submit setiap row
+      // 1. Hitung total untuk parent (Deputi)
+      const parentData = {
+        code: selectedDeputi.value, // Parent code dari deputi
+        budget: calculateTotal('budget'),
+        aa: calculateTotal('aa'),
+        budget_aa: calculateTotal('budget_aa'),
+        realization_spp: calculateTotal('realization_spp'),
+        sp2d: calculateTotal('sp2d'),
+        date: date,
+        parent_code: null, // Parent tidak punya parent_code
+      };
+
+      // 2. Insert parent row terlebih dahulu
+      await axios.post('realization', parentData);
+
+      // 3. Insert semua child rows dengan parent_code
       for (const row of rows) {
         await axios.post('realization', {
           code: row.code,
@@ -183,6 +198,7 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
           realization_spp: Number(row.realization_spp) || 0,
           sp2d: Number(row.sp2d) || 0,
           date: date,
+          parent_code: selectedDeputi.value, // Set parent_code ke deputi
         });
       }
 
@@ -296,9 +312,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                       No
                     </TableCell>
                     <TableCell sx={{ minWidth: 280, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>Unit</TableCell>
-                    <TableCell sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold', display: 'none' }}>
-                      Code Unit
-                    </TableCell>
                     <TableCell align="right" sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
                       Pagu Awal
                     </TableCell>
@@ -336,9 +349,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           styles={customSelectStyles}
                           noOptionsMessage={() => 'Unit tidak ditemukan'}
                         />
-                      </TableCell>
-                      <TableCell sx={{ display: 'none' }}>
-                        <TextField size="small" fullWidth value={row.code} disabled placeholder="Auto dari unit" />
                       </TableCell>
                       <TableCell>
                         <TextField
@@ -407,31 +417,31 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                     </TableRow>
                   ))}
 
-                  {/* Total Row */}
-                  <TableRow sx={{ bgcolor: '#FFF9C4' }}>
+                  {/* Total Row - Representing Parent (Deputi) */}
+                  <TableRow sx={{ bgcolor: '#FFE082' }}>
                     <TableCell
-                      colSpan={3}
+                      colSpan={2}
                       align="center"
-                      sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4', fontSize: '1rem' }}
+                      sx={{ fontWeight: 'bold', bgcolor: '#FFE082', fontSize: '1rem' }}
                     >
-                      TOTAL
+                      TOTAL ({selectedDeputi?.label || 'Deputi'})
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
                       {formatNumber(calculateTotal('budget'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
                       {formatNumber(calculateTotal('aa'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
                       {formatNumber(calculateTotal('budget_aa'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
                       {formatNumber(calculateTotal('realization_spp'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFF9C4' }}>
+                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
                       {formatNumber(calculateTotal('sp2d'))}
                     </TableCell>
-                    <TableCell sx={{ bgcolor: '#FFF9C4' }} />
+                    <TableCell sx={{ bgcolor: '#FFE082' }} />
                   </TableRow>
                 </TableBody>
               </Table>
@@ -439,7 +449,7 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
 
             <Box mt={2}>
               <Button variant="outlined" startIcon={<AddIcon />} onClick={addRow} fullWidth disabled={!selectedDeputi}>
-                Tambah Baris
+                Tambah Baris Unit
               </Button>
             </Box>
           </>
@@ -450,7 +460,7 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
           Batal
         </Button>
         <Button variant="contained" onClick={handleSubmit} color="primary" disabled={loadingSubmit}>
-          {loadingSubmit ? 'Menyimpan...' : `Simpan Semua Data (${rows.length} baris)`}
+          {loadingSubmit ? 'Menyimpan...' : `Simpan 1 Parent + ${rows.length} Child`}
         </Button>
       </DialogActions>
     </Dialog>
