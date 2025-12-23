@@ -16,8 +16,20 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Chip,
+  Divider,
+  alpha,
+  Tooltip,
+  Fade,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  CalendarMonth as CalendarIcon,
+  AccountBalance as AccountIcon,
+  Save as SaveIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import Select from 'react-select';
 import axios from '../variable/axios';
@@ -237,111 +249,264 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
   const customSelectStyles = {
     control: (provided, state) => ({
       ...provided,
-      minHeight: '40px',
+      minHeight: '42px',
       fontSize: '14px',
-      borderColor: state.isFocused ? '#1976d2' : '#ccc',
-      boxShadow: state.isFocused ? '0 0 0 3px rgba(25, 118, 210, 0.1)' : 'none',
+      borderRadius: '8px',
+      borderColor: state.isFocused ? '#1976d2' : '#e0e0e0',
+      backgroundColor: state.isDisabled ? '#f5f5f5' : '#fff',
+      boxShadow: state.isFocused ? '0 0 0 3px rgba(25, 118, 210, 0.15)' : 'none',
+      transition: 'all 0.2s ease',
       '&:hover': {
         borderColor: '#1976d2',
       },
     }),
     option: (provided, state) => ({
       ...provided,
-      backgroundColor: state.isSelected ? '#1976d2' : state.isFocused ? '#f5f5f5' : '#fff',
+      backgroundColor: state.isSelected ? '#1976d2' : state.isFocused ? '#e3f2fd' : '#fff',
       color: state.isSelected ? '#fff' : '#333',
       cursor: 'pointer',
       fontSize: '14px',
+      padding: '10px 12px',
+      transition: 'background-color 0.15s ease',
     }),
     menu: (provided) => ({
       ...provided,
       zIndex: 1300,
+      borderRadius: '8px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      overflow: 'hidden',
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: '#9e9e9e',
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: '#333',
+      fontWeight: 500,
     }),
   };
 
+  // Common styles
+  const headerCellStyle = {
+    bgcolor: '#1976d2',
+    color: '#fff',
+    fontWeight: 600,
+    fontSize: '0.8rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    py: 1.5,
+    borderBottom: 'none',
+  };
+
+  const inputStyle = {
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '8px',
+      transition: 'all 0.2s ease',
+      '&:hover': {
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#1976d2',
+        },
+      },
+      '&.Mui-focused': {
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#1976d2',
+          borderWidth: '2px',
+        },
+      },
+    },
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xl"
+      fullWidth
+      TransitionComponent={Fade}
+      transitionDuration={300}
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+          color: '#fff',
+          py: 2.5,
+          px: 3,
+        }}
+      >
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Input Realisasi Anggaran</Typography>
-          <TextField
-            label="Tanggal"
-            name="date"
-            type="date"
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            value={date}
-            onChange={handleDateChange}
-            sx={{ width: 200 }}
-            required
-          />
+          <Box display="flex" alignItems="center" gap={1.5}>
+            <AccountIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h6" fontWeight={600}>
+              Input Realisasi Anggaran
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                borderRadius: '10px',
+                px: 1.5,
+                py: 0.5,
+              }}
+            >
+              <CalendarIcon sx={{ mr: 1, fontSize: 20 }} />
+              <TextField
+                type="date"
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                value={date}
+                onChange={handleDateChange}
+                required
+                sx={{
+                  width: 160,
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#fff',
+                    borderRadius: '8px',
+                    '& input': {
+                      py: 1,
+                      fontSize: '14px',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            <IconButton
+              onClick={onClose}
+              sx={{
+                color: '#fff',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
-      <DialogContent dividers>
+
+      <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
         {loadingDeputi ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-            <CircularProgress />
+          <Box
+            display="flex"
+            flexDirection="column"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="300px"
+            gap={2}
+          >
+            <CircularProgress size={48} thickness={4} />
+            <Typography color="text.secondary">Memuat data...</Typography>
           </Box>
         ) : (
           <>
             {/* Dropdown Deputi */}
-            <Box mb={3}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Deputi <span style={{ color: 'red' }}>*</span>
-              </Typography>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                mb: 3,
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+                bgcolor: '#fff',
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                <Typography variant="subtitle1" fontWeight={600} color="primary">
+                  Pilih Deputi
+                </Typography>
+                <Chip label="Wajib" size="small" color="error" sx={{ height: 20, fontSize: '0.7rem' }} />
+              </Box>
               <Select
                 options={deputiOptions}
                 value={selectedDeputi}
                 onChange={setSelectedDeputi}
-                placeholder="Pilih Deputi..."
+                placeholder="🔍 Cari dan pilih Deputi..."
                 isClearable
                 isSearchable
                 styles={customSelectStyles}
                 noOptionsMessage={() => 'Deputi tidak ditemukan'}
               />
-            </Box>
+              {selectedDeputi && (
+                <Box mt={1.5}>
+                  <Chip
+                    label={`Terpilih: ${selectedDeputi.label}`}
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    sx={{ fontWeight: 500 }}
+                  />
+                </Box>
+              )}
+            </Paper>
           </>
         )}
 
         {!loadingDeputi && (
           <>
-            <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{
+                maxHeight: 450,
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+              }}
+            >
               <Table stickyHeader size="small">
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#FFF9C4' }}>
-                    <TableCell align="center" sx={{ minWidth: 50, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                  <TableRow>
+                    <TableCell align="center" sx={{ ...headerCellStyle, minWidth: 50 }}>
                       No
                     </TableCell>
-                    <TableCell sx={{ minWidth: 280, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>Unit</TableCell>
-                    <TableCell align="right" sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                    <TableCell sx={{ ...headerCellStyle, minWidth: 280 }}>Unit</TableCell>
+                    <TableCell align="right" sx={{ ...headerCellStyle, minWidth: 130 }}>
                       Pagu Awal
                     </TableCell>
-                    <TableCell align="right" sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
-                      Automatic Adjustment
+                    <TableCell align="right" sx={{ ...headerCellStyle, minWidth: 130 }}>
+                      Auto Adjustment
                     </TableCell>
-                    <TableCell align="right" sx={{ minWidth: 140, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                    <TableCell align="right" sx={{ ...headerCellStyle, minWidth: 140, bgcolor: '#0d47a1' }}>
                       Pagu Setelah AA
                     </TableCell>
-                    <TableCell align="right" sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                    <TableCell align="right" sx={{ ...headerCellStyle, minWidth: 130 }}>
                       Realisasi SPP
                     </TableCell>
-                    <TableCell align="right" sx={{ minWidth: 120, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                    <TableCell align="right" sx={{ ...headerCellStyle, minWidth: 130 }}>
                       Realisasi SP2D
                     </TableCell>
-                    <TableCell align="center" sx={{ minWidth: 70, bgcolor: '#FFF9C4', fontWeight: 'bold' }}>
+                    <TableCell align="center" sx={{ ...headerCellStyle, minWidth: 60 }}>
                       Aksi
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {rows.map((row, index) => (
-                    <TableRow key={index} hover>
-                      <TableCell align="center">{index + 1}</TableCell>
-                      <TableCell>
+                    <TableRow
+                      key={index}
+                      sx={{
+                        bgcolor: index % 2 === 0 ? '#fff' : '#fafafa',
+                        '&:hover': {
+                          bgcolor: '#e3f2fd',
+                        },
+                        transition: 'background-color 0.15s ease',
+                      }}
+                    >
+                      <TableCell align="center" sx={{ fontWeight: 600, color: '#666' }}>
+                        {index + 1}
+                      </TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         <Select
                           options={unitOptions}
                           value={row.unit_id}
                           onChange={(selected) => handleRowChange(index, 'unit_id', selected)}
-                          placeholder={selectedDeputi ? 'Pilih Unit...' : 'Pilih Deputi dulu'}
+                          placeholder={selectedDeputi ? '🔍 Pilih Unit...' : '⚠️ Pilih Deputi dulu'}
                           isClearable
                           isSearchable
                           isDisabled={!selectedDeputi || loadingUnits}
@@ -350,7 +515,7 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           noOptionsMessage={() => 'Unit tidak ditemukan'}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         <TextField
                           size="small"
                           type="number"
@@ -358,9 +523,11 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           value={row.budget}
                           onChange={(e) => handleRowChange(index, 'budget', e.target.value)}
                           inputProps={{ min: 0, step: '0.01' }}
+                          placeholder="0"
+                          sx={inputStyle}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         <TextField
                           size="small"
                           type="number"
@@ -368,9 +535,11 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           value={row.aa}
                           onChange={(e) => handleRowChange(index, 'aa', e.target.value)}
                           inputProps={{ min: 0, step: '0.01' }}
+                          placeholder="0"
+                          sx={inputStyle}
                         />
                       </TableCell>
-                      <TableCell sx={{ bgcolor: '#fff9e6' }}>
+                      <TableCell sx={{ py: 1.5, bgcolor: alpha('#1976d2', 0.08) }}>
                         <TextField
                           size="small"
                           type="number"
@@ -378,13 +547,19 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           value={row.budget_aa}
                           disabled
                           sx={{
-                            '& .MuiOutlinedInput-root.Mui-disabled': {
-                              backgroundColor: '#ffd966',
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: '8px',
+                              bgcolor: alpha('#1976d2', 0.15),
+                              '& input': {
+                                fontWeight: 600,
+                                color: '#1565c0',
+                                textAlign: 'right',
+                              },
                             },
                           }}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         <TextField
                           size="small"
                           type="number"
@@ -392,9 +567,11 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           value={row.realization_spp}
                           onChange={(e) => handleRowChange(index, 'realization_spp', e.target.value)}
                           inputProps={{ min: 0, step: '0.01' }}
+                          placeholder="0"
+                          sx={inputStyle}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ py: 1.5 }}>
                         <TextField
                           size="small"
                           type="number"
@@ -402,65 +579,191 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           value={row.sp2d}
                           onChange={(e) => handleRowChange(index, 'sp2d', e.target.value)}
                           inputProps={{ min: 0, step: '0.01' }}
+                          placeholder="0"
+                          sx={inputStyle}
                         />
                       </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => deleteRow(index)}
-                          disabled={rows.length === 1}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                      <TableCell align="center" sx={{ py: 1.5 }}>
+                        <Tooltip title={rows.length === 1 ? 'Minimal 1 baris' : 'Hapus baris'} arrow>
+                          <span>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={() => deleteRow(index)}
+                              disabled={rows.length === 1}
+                              sx={{
+                                bgcolor: rows.length === 1 ? 'transparent' : alpha('#f44336', 0.1),
+                                '&:hover': {
+                                  bgcolor: alpha('#f44336', 0.2),
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
 
                   {/* Total Row - Representing Parent (Deputi) */}
-                  <TableRow sx={{ bgcolor: '#FFE082' }}>
+                  <TableRow>
                     <TableCell
                       colSpan={2}
-                      align="center"
-                      sx={{ fontWeight: 'bold', bgcolor: '#FFE082', fontSize: '1rem' }}
+                      sx={{
+                        background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        py: 2,
+                        textAlign: 'center',
+                      }}
                     >
-                      TOTAL ({selectedDeputi?.label || 'Deputi'})
+                      📊 TOTAL {selectedDeputi ? `(${selectedDeputi.label})` : ''}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        bgcolor: '#fff3e0',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: '#e65100',
+                        py: 2,
+                      }}
+                    >
                       {formatNumber(calculateTotal('budget'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        bgcolor: '#fff3e0',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: '#e65100',
+                        py: 2,
+                      }}
+                    >
                       {formatNumber(calculateTotal('aa'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: '#1565c0',
+                        py: 2,
+                      }}
+                    >
                       {formatNumber(calculateTotal('budget_aa'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        bgcolor: '#fff3e0',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: '#e65100',
+                        py: 2,
+                      }}
+                    >
                       {formatNumber(calculateTotal('realization_spp'))}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#FFE082' }}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        bgcolor: '#fff3e0',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        color: '#e65100',
+                        py: 2,
+                      }}
+                    >
                       {formatNumber(calculateTotal('sp2d'))}
                     </TableCell>
-                    <TableCell sx={{ bgcolor: '#FFE082' }} />
+                    <TableCell sx={{ bgcolor: '#fff3e0', py: 2 }} />
                   </TableRow>
                 </TableBody>
               </Table>
             </TableContainer>
 
-            <Box mt={2}>
-              <Button variant="outlined" startIcon={<AddIcon />} onClick={addRow} fullWidth disabled={!selectedDeputi}>
-                Tambah Baris Unit
+            <Box mt={2.5}>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={addRow}
+                fullWidth
+                disabled={!selectedDeputi}
+                sx={{
+                  py: 1.5,
+                  borderRadius: '10px',
+                  borderWidth: 2,
+                  borderStyle: 'dashed',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderWidth: 2,
+                    bgcolor: alpha('#1976d2', 0.05),
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: '#e0e0e0',
+                  },
+                }}
+              >
+                + Tambah Baris Unit
               </Button>
             </Box>
           </>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="inherit" disabled={loadingSubmit}>
+
+      <Divider />
+
+      <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa' }}>
+        <Button
+          onClick={onClose}
+          disabled={loadingSubmit}
+          startIcon={<CloseIcon />}
+          sx={{
+            px: 3,
+            py: 1,
+            borderRadius: '8px',
+            textTransform: 'none',
+            fontWeight: 500,
+            color: '#666',
+            '&:hover': {
+              bgcolor: '#f5f5f5',
+            },
+          }}
+        >
           Batal
         </Button>
-        <Button variant="contained" onClick={handleSubmit} color="primary" disabled={loadingSubmit}>
-          {loadingSubmit ? 'Menyimpan...' : `Simpan 1 Parent + ${rows.length} Child`}
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={loadingSubmit || !selectedDeputi || !date}
+          startIcon={loadingSubmit ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+          sx={{
+            px: 4,
+            py: 1,
+            borderRadius: '8px',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            background: 'linear-gradient(135deg, #4caf50 0%, #43a047 100%)',
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #43a047 0%, #388e3c 100%)',
+              boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+            },
+            '&.Mui-disabled': {
+              background: '#e0e0e0',
+              boxShadow: 'none',
+            },
+          }}
+        >
+          {loadingSubmit ? 'Menyimpan...' : `Simpan Data (1 Parent + ${rows.length} Unit)`}
         </Button>
       </DialogActions>
     </Dialog>
