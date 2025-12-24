@@ -374,28 +374,30 @@ export default function RealisasiKeuangan() {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Card sx={{ height: '100%' }}>
-                <CardHeader
-                  title="Peringkat Persentase Realisasi Kementerian secara Nasional"
-                  action={
-                    ministry.length > 0 && (
-                      <Button sx={{ ml: 2 }} onClick={handleDialog}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CardHeader title="Peringkat Persentase Realisasi Kementerian secara Nasional" sx={{ pb: 2 }} />
+                <Divider />
+                <Stack sx={{ flexGrow: 1, p: 3, justifyContent: 'center', alignItems: 'center' }} spacing={2}>
+                  <Stack direction="row" spacing={1.5}>
+                    {user !== null && ['superadmin', 'realisasi'].includes(user.role) && (
+                      <Button variant="contained" onClick={() => setOpen(true)}>
+                        Tambah Realisasi
+                      </Button>
+                    )}
+                    {ministry.length > 0 && (
+                      <Button variant="outlined" onClick={handleDialog}>
                         Lihat Semua
                       </Button>
-                    )
-                  }
-                  sx={{ mb: 1 }}
-                />
-                <Button variant="contained" onClick={() => setOpen(true)}>
-                  Tambah Realisasi
-                </Button>
+                    )}
+                  </Stack>
+                </Stack>
 
                 <RealizationForm
                   open={open}
                   onClose={() => setOpen(false)}
                   onSuccess={() => {
-                    // refresh data tabel / dashboard
-                    console.log('Data berhasil disimpan');
+                    setStatus(true);
+                    handleSnackbar('Data berhasil disimpan');
                   }}
                 />
               </Card>
