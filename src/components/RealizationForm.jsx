@@ -35,7 +35,16 @@ import Select from 'react-select';
 import axios from '../variable/axios';
 
 export default function RealizationForm({ open, onClose, onSuccess }) {
-  const [date, setDate] = useState('');
+  // Auto-fill with today's date
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [date, setDate] = useState(getTodayDate());
   const [rows, setRows] = useState([
     {
       code: '',
@@ -52,51 +61,23 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
   // Deputi & Unit states
   const [deputiOptions, setDeputiOptions] = useState([]);
   const [unitOptions, setUnitOptions] = useState([]);
-  const [selectedDeputi, setSelectedDeputi] = useState(null);
+  // Fixed deputi: Deputi Bidang Kewirausahaan (401744)
+  const [selectedDeputi, setSelectedDeputi] = useState({
+    value: '401744',
+    label: 'Deputi Bidang Kewirausahaan',
+  });
   const [loadingDeputi, setLoadingDeputi] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState(false);
 
-  // Fetch deputi dropdown data on dialog open
+  // Fetch units on dialog open (deputi is fixed to 401744)
   useEffect(() => {
     if (open) {
-      fetchDeputi();
-      // Reset selections when dialog opens
-      setSelectedDeputi(null);
-      setUnitOptions([]);
+      // Deputi is fixed, fetch units directly
+      fetchUnits('401744');
     }
   }, [open]);
 
-  // Fetch units when deputi changes
-  useEffect(() => {
-    if (selectedDeputi) {
-      fetchUnits(selectedDeputi.value);
-      // Reset unit in all rows
-      setRows(rows.map((row) => ({ ...row, unit_id: null, code: '' })));
-    } else {
-      setUnitOptions([]);
-      // Reset all rows
-      setRows(rows.map((row) => ({ ...row, unit_id: null, code: '' })));
-    }
-  }, [selectedDeputi]);
-
-  const fetchDeputi = async () => {
-    setLoadingDeputi(true);
-    try {
-      const response = await axios.get('param/deputi_dropdown');
-      const options = response.data.data.map((item) => ({
-        value: item.value,
-        label: item.label,
-      }));
-      setDeputiOptions(options);
-    } catch (error) {
-      console.error('Error fetching deputi:', error);
-      alert('Gagal memuat data deputi');
-    } finally {
-      setLoadingDeputi(false);
-    }
-  };
-
-  const fetchUnits = async (parentCode) => {
+  const fetchUnits = async (parentCode = 401744) => {
     setLoadingUnits(true);
     try {
       const response = await axios.get(`param/asdep_dropdown?parent_code=${parentCode}`);
@@ -170,11 +151,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
       return;
     }
 
-    if (!selectedDeputi) {
-      alert('Deputi harus dipilih!');
-      return;
-    }
-
     // Validasi semua code terisi
     const emptyCode = rows.find((row) => !row.code);
     if (emptyCode) {
@@ -220,8 +196,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
 
       // Reset form
       setDate('');
-      setSelectedDeputi(null);
-      setUnitOptions([]);
       setRows([
         {
           code: '',
@@ -354,29 +328,17 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                 bgcolor: 'rgba(255,255,255,0.15)',
                 borderRadius: '10px',
                 px: 1.5,
-                py: 0.5,
+                py: 0.75,
               }}
             >
               <CalendarIcon sx={{ mr: 1, fontSize: 20 }} />
-              <TextField
-                type="date"
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={date}
-                onChange={handleDateChange}
-                required
-                sx={{
-                  width: 160,
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#fff',
-                    borderRadius: '8px',
-                    '& input': {
-                      py: 1,
-                      fontSize: '14px',
-                    },
-                  },
-                }}
-              />
+              <Typography sx={{ fontSize: '14px', fontWeight: 500 }}>
+                {new Date(date).toLocaleDateString('id-ID', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })}
+              </Typography>
             </Box>
             <IconButton
               onClick={onClose}
@@ -392,7 +354,10 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
       </DialogTitle>
 
       <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-        {loadingDeputi ? (
+        {/* Hidden input for fixed Deputi: Deputi Bidang Kewirausahaan (401744) */}
+        <input type="hidden" name="deputi" value="401744" />
+
+        {loadingUnits ? (
           <Box
             display="flex"
             flexDirection="column"
@@ -406,54 +371,11 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
           </Box>
         ) : (
           <>
-            {/* Dropdown Deputi */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                mb: 3,
-                borderRadius: '12px',
-                border: '1px solid #e0e0e0',
-                bgcolor: '#fff',
-              }}
-            >
-              <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                <Typography variant="subtitle1" fontWeight={600} color="primary">
-                  Pilih Deputi
-                </Typography>
-                <Chip label="Wajib" size="small" color="error" sx={{ height: 20, fontSize: '0.7rem' }} />
-              </Box>
-              <Select
-                options={deputiOptions}
-                value={selectedDeputi}
-                onChange={setSelectedDeputi}
-                placeholder="🔍 Cari dan pilih Deputi..."
-                isClearable
-                isSearchable
-                styles={customSelectStyles}
-                noOptionsMessage={() => 'Deputi tidak ditemukan'}
-              />
-              {selectedDeputi && (
-                <Box mt={1.5}>
-                  <Chip
-                    label={`Terpilih: ${selectedDeputi.label}`}
-                    color="primary"
-                    variant="outlined"
-                    size="small"
-                    sx={{ fontWeight: 500 }}
-                  />
-                </Box>
-              )}
-            </Paper>
-          </>
-        )}
-
-        {!loadingDeputi && (
-          <>
             <TableContainer
               component={Paper}
               elevation={0}
               sx={{
+                my: 2,
                 maxHeight: 450,
                 borderRadius: '12px',
                 border: '1px solid #e0e0e0',

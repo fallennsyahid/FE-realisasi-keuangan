@@ -60,15 +60,27 @@ export default function RealisasiKeuangan() {
     });
   };
 
+  // State untuk list asdep dengan parent_code 401744
+  const [asdepList, setAsdepList] = useState([]);
+  const getAsdepList = async () => {
+    try {
+      const res = await axios.get(`param/asdep_dropdown?parent_code=401744`);
+      setAsdepList(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching asdep list:', error);
+      setAsdepList([]);
+    }
+  };
+
   const [data, setData] = useState();
   const [status, setStatus] = useState(false);
-  const [filter, setFilter] = useState('eselon1');
+  const [filter, setFilter] = useState('eselon2');
   const [complete, setComplete] = useState(false);
 
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    Promise.all([getTotalRealization(), getTotalRealizationByPeriode(), getMinistry()]).then((res) => {
+    Promise.all([getTotalRealization(), getTotalRealizationByPeriode(), getMinistry(), getAsdepList()]).then((res) => {
       setStatus(false);
       setComplete(true);
       // eslint-disable-next-line arrow-body-style
@@ -89,24 +101,67 @@ export default function RealisasiKeuangan() {
     });
   }, [status]);
 
+  // Helper function untuk merge asdepList dengan realization data
+  const getMergedChartData = (field) => {
+    if (asdepList.length === 0) return [];
+
+    return asdepList.map((asdep) => {
+      const found = realization?.child?.find((item) => item.code === asdep.value);
+      return {
+        label: asdep.label,
+        value: found ? found[field] || 0 : 0,
+      };
+    });
+  };
+
+  const getMergedTop5Data = (percentField) => {
+    if (asdepList.length === 0) return [];
+
+    return asdepList
+      .map((asdep) => {
+        const found = realization?.child?.find((item) => item.code === asdep.value);
+        return {
+          label: asdep.label,
+          amount: found ? found.realization_spp || 0 : 0,
+          value: found ? found[percentField] || 0 : 0,
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  };
+
+  // Helper function untuk merge asdepList dengan realization data untuk tabel detail
+  const getMergedTableData = () => {
+    if (asdepList.length === 0) return [];
+
+    return asdepList.map((asdep) => {
+      const found = realization?.child?.find((item) => item.code === asdep.value);
+      return {
+        code: asdep.value,
+        name: asdep.label,
+        budget: found ? found.budget || 0 : 0,
+        aa: found ? found.aa || 0 : 0,
+        budget_aa: found ? found.budget_aa || 0 : 0,
+        realization_spp: found ? found.realization_spp || 0 : 0,
+        budget_percent: found ? found.budget_percent || 0 : 0,
+        budget_aa_percent: found ? found.budget_aa_percent || 0 : 0,
+        sp2d: found ? found.sp2d || 0 : 0,
+      };
+    });
+  };
+
   const [realization, setRealization] = useState();
   const getAllRealization = async (params) => {
     await axios.get(`realization/all?filter=${eselonValue(params)}`).then((res) => {
       // console.log(res.data.data);
       const value = res.data.data;
-      if (filter === 'eselon2') {
-        const arr = [];
-        value.map((v) => v.child.length > 0 && v.child.map((row) => arr.push(row)));
-        setRealization({
-          data: value,
-          child: arr,
-        });
-      } else {
-        setRealization({
-          data: value,
-          child: [],
-        });
-      }
+      // eselon2 and eselon2aa both use filter=eselon2, extract child data
+      const arr = [];
+      value.map((v) => v.child && v.child.length > 0 && v.child.map((row) => arr.push(row)));
+      setRealization({
+        data: value,
+        child: arr,
+      });
     });
   };
 
@@ -215,12 +270,10 @@ export default function RealisasiKeuangan() {
   };
 
   const eselon = (param) => {
-    if (param === 'eselon1') {
-      param = 'Eselon I';
-    } else if (param === 'eselon1aa') {
-      param = 'Eselon I (Setelah AA)';
-    } else if (param === 'eselon2') {
+    if (param === 'eselon2') {
       param = 'Eselon II';
+    } else if (param === 'eselon2aa') {
+      param = 'Eselon II (Setelah AA)';
     } else {
       param = 'Honor Data SIDT';
     }
@@ -228,25 +281,34 @@ export default function RealisasiKeuangan() {
   };
 
   const eselonValue = (param) => {
-    if (param === 'eselon1aa') {
-      param = 'eselon1';
+    if (param === 'eselon2aa') {
+      param = 'eselon2';
     }
     return param;
   };
 
   return (
-    <Page title="Realisasi Keuangan" background="gradient.jpg">
+    <Page title="Realisasi Keuangan" background="bg-new.webp">
       <Container maxWidth="xl">
-        <Typography variant="h4" color="#fff" gutterBottom>
-          Realisasi Keuangan
-        </Typography>
-        <Typography variant="body2" color="#fff" gutterBottom>
-          Kementerian Koperasi dan UKM Republik Indonesia
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
+          <Stack>
+            <Typography variant="h4" color="#000" gutterBottom>
+              Deputi Bidang Kewirausahaan
+            </Typography>
+            <Typography variant="body2" color="#000" gutterBottom>
+              Kementrian UMKM Republik Indonesia
+            </Typography>
+          </Stack>
+          {user !== null && ['superadmin', 'realisasi'].includes(user.role) && (
+            <Button variant="contained" onClick={() => setOpen(true)}>
+              Tambah Realisasi
+            </Button>
+          )}
+        </Stack>
       </Container>
       {data !== undefined && complete ? (
         <Container maxWidth="xl">
-          <Stack
+          {/* <Stack
             direction="row"
             alignItems="center"
             justifyContent={data.periode.length > 0 ? 'space-between' : 'flex-end'}
@@ -265,18 +327,23 @@ export default function RealisasiKeuangan() {
               </Typography>
             )}
             {user !== null && ['superadmin', 'realisasi'].includes(user.role) && (
-              <Button for="realization" variant="contained" startIcon={<FileUploadOutlined />} component="label">
-                Import Realisasi
-                <input
-                  id="realization"
-                  type="file"
-                  accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={importRealization}
-                  hidden
-                />
-              </Button>
+              <>
+                <Button for="realization" variant="contained" startIcon={<FileUploadOutlined />} component="label">
+                  Import Realisasi
+                  <input
+                    id="realization"
+                    type="file"
+                    accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={importRealization}
+                    hidden
+                  />
+                </Button>
+                <Button variant="contained" onClick={() => setOpen(true)}>
+                  Tambah Realisasi
+                </Button>
+              </>
             )}
-          </Stack>
+          </Stack> */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={4}>
               <BankingCurrentBalance
@@ -307,7 +374,7 @@ export default function RealisasiKeuangan() {
             <Grid item xs={12} md={6}>
               <AppWidget
                 title="Realisasi SP2D"
-                total={data.realization.sp2d}
+                total={data.realization.sp2d || 0}
                 icon={'eva:file-text-fill'}
                 color="info"
               />
@@ -315,25 +382,25 @@ export default function RealisasiKeuangan() {
             <Grid item xs={6} md={3}>
               <AppWidget
                 title="% Realisasi SP2D (AA)"
-                total={data.realization.sp2d_percent_aa}
+                total={data.realization.sp2d_percent_aa || 0}
                 icon={'eva:percent-fill'}
                 color="warning"
-                chartData={data.realization.sp2d_percent_aa.toString().substr(0, 2)}
+                chartData={parseFloat(data.realization.sp2d_percent_aa) || 0}
               />
             </Grid>
             <Grid item xs={6} md={3}>
               <AppWidget
                 title="% Realisasi SP2D (Pagu Awal)"
-                total={data.realization.sp2d_percent}
+                total={data.realization.sp2d_percent || 0}
                 icon={'eva:percent-fill'}
                 color="warning"
-                chartData={data.realization.sp2d_percent.toString().substr(0, 2)}
+                chartData={parseFloat(data.realization.sp2d_percent) || 0}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <AppWidget
                 title="Realisasi SPP"
-                total={data.realization.realization_spp}
+                total={data.realization.realization_spp || 0}
                 color="info"
                 icon={'eva:file-text-fill'}
               />
@@ -341,13 +408,13 @@ export default function RealisasiKeuangan() {
             <Grid item xs={12} sm={6}>
               <AppWidget
                 title="% Realisasi SPP (AA)"
-                total={data.realization.realization_spp_percent}
+                total={data.realization.realization_spp_percent || 0}
                 icon={'eva:percent-fill'}
                 color="warning"
-                chartData={data.realization.realization_spp_percent.toString().substr(0, 2)}
+                chartData={parseFloat(data.realization.realization_spp_percent) || 0}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6} lg={12}>
               <AppWebsiteVisits
                 title="Time Series (Pagu, Pagu AA & Realisasi SPP)"
                 chartLabels={data.periode.map((value) => value.newdate)}
@@ -373,7 +440,7 @@ export default function RealisasiKeuangan() {
                 ]}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            {/* <Grid item xs={12} md={6}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardHeader title="Peringkat Persentase Realisasi Kementerian secara Nasional" sx={{ pb: 2 }} />
                 <Divider />
@@ -401,11 +468,11 @@ export default function RealisasiKeuangan() {
                   }}
                 />
               </Card>
-            </Grid>
+            </Grid> */}
             <Grid item xs={12}>
               <Divider sx={{ borderStyle: 'dashed', mb: 3, mt: 1 }} />
               <Stack direction="row" alignItems="center" spacing={3}>
-                <Typography variant="h6" color="#fff">
+                <Typography variant="h6" color="#000">
                   Pilih Tampilan :
                 </Typography>
                 <TextField
@@ -420,203 +487,92 @@ export default function RealisasiKeuangan() {
                   <MenuItem value="" disabled selected>
                     Pilih Tampilan
                   </MenuItem>
-                  <MenuItem value="eselon1">Eselon I</MenuItem>
-                  <MenuItem value="eselon1aa">Eselon I (Setelah AA)</MenuItem>
                   <MenuItem value="eselon2">Eselon II</MenuItem>
-                  <MenuItem value="honor">Honor Data SIDT</MenuItem>
+                  <MenuItem value="eselon2aa">Eselon II (Setelah AA)</MenuItem>
+                  {/* <MenuItem value="honor">Honor Data SIDT</MenuItem> */}
                 </TextField>
               </Stack>
             </Grid>
           </Grid>
-          {filter !== 'honor' ? (
-            <>
-              {realization !== undefined ? (
-                <Grid container spacing={3}>
-                  {filter !== 'eselon2' && (
-                    <Grid item xs={12} md={6} lg={5}>
-                      {filter === 'eselon1' ? (
-                        <AppCurrentVisits
-                          title={`Komposisi Pagu ${eselon(filter)}`}
-                          chartData={realization.data
-                            // eslint-disable-next-line arrow-body-style
-                            .map((value) => {
-                              return {
-                                label: value.name,
-                                value: value.budget,
-                              };
-                            })}
+          {/* Komposisi dan Top 5 */}
+          {filter !== 'honor' && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6} lg={5}>
+                {filter === 'eselon2' ? (
+                  <AppCurrentVisits
+                    title={`Komposisi Pagu ${eselon(filter)}`}
+                    chartData={getMergedChartData('budget')}
+                  />
+                ) : (
+                  <AppCurrentVisits
+                    title={`Komposisi Pagu ${eselon(filter)}`}
+                    chartData={getMergedChartData('budget_aa')}
+                  />
+                )}
+              </Grid>
+              <Grid item xs>
+                {filter === 'eselon2' ? (
+                  <EcommerceSalesOverview
+                    title={`Top 5 Persentase Realisasi ${eselon(filter)}`}
+                    data={getMergedTop5Data('budget_percent')}
+                  />
+                ) : (
+                  <EcommerceSalesOverview
+                    title={`Top 5 Persentase Realisasi ${eselon(filter)}`}
+                    data={getMergedTop5Data('budget_aa_percent')}
+                  />
+                )}
+              </Grid>
+              {/* Detail Eselon II */}
+              <Grid item xs={12}>
+                <Card>
+                  <CardHeader title={`Detail  ${eselon(filter)}`} sx={{ mb: 3 }} />
+                  <Scrollbar>
+                    <TableContainer sx={{ minWidth: 720, maxHeight: 700 }}>
+                      <Table stickyHeader>
+                        <TableHeadCustom
+                          headLabel={[
+                            { label: 'No.', align: 'center' },
+                            { label: 'Unit Kerja' },
+                            { label: 'Pagu', align: 'right' },
+                            { label: 'Automatic Adjustment', align: 'right' },
+                            { label: 'Pagu Setelah AA', align: 'right' },
+                            { label: 'Realisasi SPP', align: 'right' },
+                            { label: '%', align: 'right' },
+                            { label: 'SP2D', align: 'right' },
+                          ]}
                         />
-                      ) : (
-                        <AppCurrentVisits
-                          title={`Komposisi Pagu ${eselon(filter)}`}
-                          chartData={realization.data
-                            // eslint-disable-next-line arrow-body-style
-                            .map((value) => {
-                              return {
-                                label: value.name,
-                                value: value.budget_aa,
-                              };
-                            })}
-                        />
-                      )}
-                    </Grid>
-                  )}
-                  <Grid item xs>
-                    {filter === 'eselon1' && (
-                      <EcommerceSalesOverview
-                        title={`Peringkat Realisasi SPP ${eselon(filter)}`}
-                        data={realization.data
-                          .sort((a, b) => (a.budget_percent < b.budget_percent ? 1 : -1))
-                          .slice(0, 5)
-                          // eslint-disable-next-line arrow-body-style
-                          .map((value) => {
-                            return {
-                              label: value.name,
-                              amount: value.realization_spp,
-                              value: value.budget_percent,
-                            };
-                          })}
-                      />
-                    )}
-                    {filter === 'eselon1aa' && (
-                      <EcommerceSalesOverview
-                        title={`Peringkat Realisasi SPP ${eselon(filter)}`}
-                        data={realization.data
-                          .sort((a, b) => (a.budget_aa_percent < b.budget_aa_percent ? 1 : -1))
-                          .slice(0, 5)
-                          // eslint-disable-next-line arrow-body-style
-                          .map((value) => {
-                            return {
-                              label: value.name,
-                              amount: value.realization_spp,
-                              value: value.budget_aa_percent,
-                            };
-                          })}
-                      />
-                    )}
-                    {filter === 'eselon2' && (
-                      <EcommerceSalesOverview
-                        title={`Top 5 Persentase Realisasi ${eselon(filter)}`}
-                        data={realization.child
-                          .sort((a, b) => (a.budget_aa_percent < b.budget_aa_percent ? 1 : -1))
-                          .slice(0, 5)
-                          // eslint-disable-next-line arrow-body-style
-                          .map((value) => {
-                            return {
-                              label: value.name,
-                              amount: value.realization_spp,
-                              value: value.budget_aa_percent,
-                            };
-                          })}
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Card>
-                      <CardHeader title={`Detail  ${eselon(filter)}`} sx={{ mb: 3 }} />
-                      <Scrollbar>
-                        <TableContainer sx={{ minWidth: 720, maxHeight: 700 }}>
-                          {filter !== 'eselon2' ? (
-                            <Table stickyHeader>
-                              <TableHeadCustom
-                                headLabel={[
-                                  { label: 'No.', align: 'center' },
-                                  { label: 'Unit Kerja' },
-                                  { label: 'Pagu', align: 'right' },
-                                  { label: 'Realisasi SPP', align: 'right' },
-                                  { label: '%', align: 'right' },
-                                  { label: 'SP2D', align: 'right' },
-                                ]}
-                              />
-                              <TableBody>
-                                {realization.data
-                                  .sort((a, b) => a.code.localeCompare(b.code))
-                                  .map((value, index) => (
-                                    <TableRow key={index}>
-                                      <TableCell align="center">{index + 1}.</TableCell>
-                                      <TableCell>{value.name}</TableCell>
-                                      <TableCell align="right">
-                                        {filter === 'eselon1'
-                                          ? NumberFormat(value.budget, 'Rp')
-                                          : NumberFormat(value.budget_aa, 'Rp')}
-                                      </TableCell>
-                                      <TableCell align="right">{NumberFormat(value.realization_spp, 'Rp')}</TableCell>
-                                      <TableCell align="right">
-                                        {filter === 'eselon1' ? value.budget_percent : value.budget_aa_percent}%
-                                      </TableCell>
-                                      <TableCell align="right">{NumberFormat(value.sp2d, 'Rp')}</TableCell>
-                                    </TableRow>
-                                  ))}
-                              </TableBody>
-                            </Table>
-                          ) : (
-                            <Table stickyHeader>
-                              <TableHeadCustom
-                                headLabel={[
-                                  { label: 'No.', align: 'center' },
-                                  { label: 'Unit Kerja' },
-                                  { label: 'Pagu', align: 'right' },
-                                  { label: 'Automatic Adjustment', align: 'right' },
-                                  { label: 'Pagu Setelah AA', align: 'right' },
-                                  { label: 'Realisasi SPP', align: 'right' },
-                                  { label: '%', align: 'right' },
-                                  { label: 'SP2D', align: 'right' },
-                                ]}
-                              />
-                              <TableBody>
-                                {realization.data
-                                  .sort((a, b) => a.code.localeCompare(b.code))
-                                  .map((value, index) => (
-                                    <>
-                                      <TableRow
-                                        key={index}
-                                        sx={{
-                                          bgcolor: alpha(
-                                            theme.palette.primary.main,
-                                            theme.palette.action.selectedOpacity
-                                          ),
-                                        }}
-                                      >
-                                        <TableCell align="center">{index + 1}.</TableCell>
-                                        <TableCell>{value.name}</TableCell>
-                                        <TableCell align="right">{NumberFormat(value.budget, 'Rp')}</TableCell>
-                                        <TableCell align="right">{NumberFormat(value.aa, 'Rp')}</TableCell>
-                                        <TableCell align="right">{NumberFormat(value.budget_aa, 'Rp')}</TableCell>
-                                        <TableCell align="right">{NumberFormat(value.realization_spp, 'Rp')}</TableCell>
-                                        <TableCell align="right">{value.budget_aa_percent}%</TableCell>
-                                        <TableCell align="right">{NumberFormat(value.sp2d, 'Rp')}</TableCell>
-                                      </TableRow>
-                                      {value.child?.map((value, key) => (
-                                        <TableRow key={key + index}>
-                                          <TableCell />
-                                          <TableCell>{value.name}</TableCell>
-                                          <TableCell align="right">{NumberFormat(value.budget, 'Rp')}</TableCell>
-                                          <TableCell align="right">{NumberFormat(value.aa, 'Rp')}</TableCell>
-                                          <TableCell align="right">{NumberFormat(value.budget_aa, 'Rp')}</TableCell>
-                                          <TableCell align="right">
-                                            {NumberFormat(value.realization_spp, 'Rp')}
-                                          </TableCell>
-                                          <TableCell align="right">
-                                            {filter === 'eselon1' ? value.budget_percent : value.budget_aa_percent}%
-                                          </TableCell>
-                                          <TableCell align="right">{NumberFormat(value.sp2d, 'Rp')}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </>
-                                  ))}
-                              </TableBody>
-                            </Table>
-                          )}
-                        </TableContainer>
-                      </Scrollbar>
-                    </Card>
-                  </Grid>
-                </Grid>
-              ) : (
-                <Loading />
-              )}
-            </>
-          ) : (
+                        <TableBody>
+                          {getMergedTableData()
+                            .sort((a, b) => a.code.localeCompare(b.code))
+                            .map((value, index) => (
+                              <TableRow
+                                key={index}
+                                sx={{
+                                  bgcolor: alpha(theme.palette.primary.main, theme.palette.action.selectedOpacity),
+                                }}
+                              >
+                                <TableCell align="center">{index + 1}.</TableCell>
+                                <TableCell>{value.name}</TableCell>
+                                <TableCell align="right">{NumberFormat(value.budget, 'Rp')}</TableCell>
+                                <TableCell align="right">{NumberFormat(value.aa, 'Rp')}</TableCell>
+                                <TableCell align="right">{NumberFormat(value.budget_aa, 'Rp')}</TableCell>
+                                <TableCell align="right">{NumberFormat(value.realization_spp, 'Rp')}</TableCell>
+                                <TableCell align="right">
+                                  {filter === 'eselon2' ? value.budget_percent : value.budget_aa_percent}%
+                                </TableCell>
+                                <TableCell align="right">{NumberFormat(value.sp2d, 'Rp')}</TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Scrollbar>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+          {filter === 'honor' && (
             <>
               {honor !== undefined ? (
                 <>
@@ -807,6 +763,15 @@ export default function RealisasiKeuangan() {
           )}
         </DialogActions>
       </Dialog>
+
+      <RealizationForm
+        open={open}
+        onClose={() => setOpen(false)}
+        onSuccess={() => {
+          setStatus(true);
+          handleSnackbar('Data berhasil disimpan');
+        }}
+      />
     </Page>
   );
 }

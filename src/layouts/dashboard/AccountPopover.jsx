@@ -70,7 +70,7 @@ export default function AccountPopover() {
           }),
         }}
       >
-        <Avatar src="/static/logo.png" alt="photoURL" sx={{ border: '1px solid #eee' }} />
+        <Avatar src="/static/umkm.png" alt="photoURL" sx={{ border: '1px solid #eee' }} />
       </IconButton>
 
       <MenuPopover
