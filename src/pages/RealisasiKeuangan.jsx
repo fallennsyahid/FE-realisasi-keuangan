@@ -86,7 +86,8 @@ export default function RealisasiKeuangan() {
       // eslint-disable-next-line arrow-body-style
       const periode = res[1].map((value) => {
         const date = new Date(moment(value.date, 'DD-MM-YYYY').format('YYYY-MM-DD'));
-        const newdate = moment(value.date, 'DD-MM-YYYY').add(1, 'd').format('MM/DD/YYYY');
+        // Gunakan timestamp untuk ApexCharts datetime axis
+        const newdate = moment(value.date, 'DD-MM-YYYY').add(1, 'd').valueOf();
         return {
           ...value,
           date,
@@ -101,15 +102,35 @@ export default function RealisasiKeuangan() {
     });
   }, [status]);
 
+  // Helper function untuk aggregate data berdasarkan code (menjumlahkan semua entry dengan code yang sama)
+  const getAggregatedData = (code) => {
+    const items = realization?.child?.filter((item) => item.code === code) || [];
+    if (items.length === 0) return null;
+
+    return items.reduce(
+      (acc, item) => ({
+        budget: acc.budget + (item.budget || 0),
+        aa: acc.aa + (item.aa || 0),
+        budget_aa: acc.budget_aa + (item.budget_aa || 0),
+        realization_spp: acc.realization_spp + (item.realization_spp || 0),
+        sp2d: acc.sp2d + (item.sp2d || 0),
+        // Untuk persentase, hitung ulang berdasarkan total
+        budget_percent: 0,
+        budget_aa_percent: 0,
+      }),
+      { budget: 0, aa: 0, budget_aa: 0, realization_spp: 0, sp2d: 0, budget_percent: 0, budget_aa_percent: 0 }
+    );
+  };
+
   // Helper function untuk merge asdepList dengan realization data
   const getMergedChartData = (field) => {
     if (asdepList.length === 0) return [];
 
     return asdepList.map((asdep) => {
-      const found = realization?.child?.find((item) => item.code === asdep.value);
+      const aggregated = getAggregatedData(asdep.value);
       return {
         label: asdep.label,
-        value: found ? found[field] || 0 : 0,
+        value: aggregated ? aggregated[field] || 0 : 0,
       };
     });
   };
@@ -119,11 +140,20 @@ export default function RealisasiKeuangan() {
 
     return asdepList
       .map((asdep) => {
-        const found = realization?.child?.find((item) => item.code === asdep.value);
+        const aggregated = getAggregatedData(asdep.value);
+        // Hitung persentase berdasarkan field yang diminta
+        let percent = 0;
+        if (aggregated) {
+          if (percentField === 'budget_percent' && aggregated.budget > 0) {
+            percent = ((aggregated.realization_spp / aggregated.budget) * 100).toFixed(2);
+          } else if (percentField === 'budget_aa_percent' && aggregated.budget_aa > 0) {
+            percent = ((aggregated.realization_spp / aggregated.budget_aa) * 100).toFixed(2);
+          }
+        }
         return {
           label: asdep.label,
-          amount: found ? found.realization_spp || 0 : 0,
-          value: found ? found[percentField] || 0 : 0,
+          amount: aggregated ? aggregated.realization_spp || 0 : 0,
+          value: parseFloat(percent),
         };
       })
       .sort((a, b) => b.value - a.value)
@@ -135,17 +165,28 @@ export default function RealisasiKeuangan() {
     if (asdepList.length === 0) return [];
 
     return asdepList.map((asdep) => {
-      const found = realization?.child?.find((item) => item.code === asdep.value);
+      const aggregated = getAggregatedData(asdep.value);
+      // Hitung persentase
+      let budgetPercent = 0;
+      let budgetAaPercent = 0;
+      if (aggregated) {
+        if (aggregated.budget > 0) {
+          budgetPercent = ((aggregated.realization_spp / aggregated.budget) * 100).toFixed(2);
+        }
+        if (aggregated.budget_aa > 0) {
+          budgetAaPercent = ((aggregated.realization_spp / aggregated.budget_aa) * 100).toFixed(2);
+        }
+      }
       return {
         code: asdep.value,
         name: asdep.label,
-        budget: found ? found.budget || 0 : 0,
-        aa: found ? found.aa || 0 : 0,
-        budget_aa: found ? found.budget_aa || 0 : 0,
-        realization_spp: found ? found.realization_spp || 0 : 0,
-        budget_percent: found ? found.budget_percent || 0 : 0,
-        budget_aa_percent: found ? found.budget_aa_percent || 0 : 0,
-        sp2d: found ? found.sp2d || 0 : 0,
+        budget: aggregated ? aggregated.budget : 0,
+        aa: aggregated ? aggregated.aa : 0,
+        budget_aa: aggregated ? aggregated.budget_aa : 0,
+        realization_spp: aggregated ? aggregated.realization_spp : 0,
+        budget_percent: budgetPercent,
+        budget_aa_percent: budgetAaPercent,
+        sp2d: aggregated ? aggregated.sp2d : 0,
       };
     });
   };
