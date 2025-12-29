@@ -52,7 +52,7 @@ export default function Login() {
                 Dashboard
               </Typography>
               <Typography color="text.secondary" sx={{ px: 5, mb: 5 }}>
-                Kementerian Koperasi dan UKM Republik Indonesia
+                Kementerian UMKM Republik Indonesia
               </Typography>
               <img src="/assets/illustrations/illustration_dashboard.png" alt="login" width="90%" />
             </SectionStyle>

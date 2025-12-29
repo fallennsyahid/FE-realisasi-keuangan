@@ -21,7 +21,7 @@ export default function Logo({ disabledLink = false, sx }) {
   //   const PRIMARY_DARK = theme.palette.primary.dark;
 
   // OR
-  const logo = <Box component="img" src="/assets/banner2.png" sx={{ width: 250, ...sx }} />;
+  const logo = <Box component="img" src="/assets/banner3.webp" sx={{ width: 350, ...sx }} />;
 
   //   const logo = (
   //     <Box sx={{ width: 40, height: 40, ...sx }}>
