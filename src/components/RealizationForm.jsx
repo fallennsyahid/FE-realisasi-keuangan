@@ -242,10 +242,14 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
     }),
     menu: (provided) => ({
       ...provided,
-      zIndex: 1300,
+      zIndex: 9999,
       borderRadius: '8px',
       boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       overflow: 'hidden',
+    }),
+    menuPortal: (provided) => ({
+      ...provided,
+      zIndex: 9999,
     }),
     placeholder: (provided) => ({
       ...provided,
@@ -431,6 +435,8 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
                           isDisabled={!selectedDeputi || loadingUnits}
                           isLoading={loadingUnits}
                           styles={customSelectStyles}
+                          menuPortalTarget={document.body}
+                          menuPosition="fixed"
                           noOptionsMessage={() => 'Unit tidak ditemukan'}
                         />
                       </TableCell>
