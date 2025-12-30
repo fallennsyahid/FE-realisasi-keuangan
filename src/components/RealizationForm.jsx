@@ -66,7 +66,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
     value: '401744',
     label: 'Deputi Bidang Kewirausahaan',
   });
-  const [loadingDeputi, setLoadingDeputi] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState(false);
 
   // Fetch units on dialog open (deputi is fixed to 401744)
@@ -81,10 +80,12 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
     setLoadingUnits(true);
     try {
       const response = await axios.get(`param/asdep_dropdown?parent_code=${parentCode}`);
-      const options = response.data.data.map((item) => ({
-        value: item.value,
-        label: item.label,
-      }));
+      const options = response.data.data
+        .map((item) => ({
+          value: item.value,
+          label: item.label,
+        }))
+        .reverse();
       setUnitOptions(options);
     } catch (error) {
       console.error('Error fetching units:', error);
@@ -92,10 +93,6 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
     } finally {
       setLoadingUnits(false);
     }
-  };
-
-  const handleDateChange = (e) => {
-    setDate(e.target.value);
   };
 
   const handleRowChange = (index, field, value) => {
@@ -685,7 +682,7 @@ export default function RealizationForm({ open, onClose, onSuccess }) {
             },
           }}
         >
-          {loadingSubmit ? 'Menyimpan...' : `Simpan Data (1 Parent + ${rows.length} Unit)`}
+          {loadingSubmit ? 'Menyimpan...' : `Simpan Data`}
         </Button>
       </DialogActions>
     </Dialog>
