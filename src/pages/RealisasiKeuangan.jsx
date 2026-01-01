@@ -44,6 +44,73 @@ export default function RealisasiKeuangan() {
   const theme = useTheme();
   const { user } = useRecoilValue(authentication);
 
+  // Helper function format tanggal Indonesia tanpa library
+  const formatDateTimeIndonesia = (dateString) => {
+    if (!dateString) return '-';
+
+    const bulanIndonesia = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    // Parse datetime string "2025-12-31 02:14:21" sebagai UTC lalu konversi ke WIB (UTC+7)
+    const dateUTC = new Date(`${dateString.replace(' ', 'T')}Z`); // Treat as UTC
+    const dateWIB = new Date(dateUTC.getTime() + 7 * 60 * 60 * 1000); // Add 7 hours for WIB
+
+    const tanggal = dateWIB.getUTCDate();
+    const bulan = bulanIndonesia[dateWIB.getUTCMonth()];
+    const tahun = dateWIB.getUTCFullYear();
+
+    // Format jam dalam 24 jam dengan padding 0
+    const hours = String(dateWIB.getUTCHours()).padStart(2, '0');
+    const minutes = String(dateWIB.getUTCMinutes()).padStart(2, '0');
+
+    return `${tanggal} ${bulan} ${tahun}, pukul ${hours}.${minutes} WIB`;
+  };
+
+  // Helper function untuk mendapatkan created_at terbaru dari data realization
+  const getLatestCreatedAt = (realizationData) => {
+    if (!realizationData) return null;
+
+    // Jika data adalah array, cari created_at terbaru
+    if (Array.isArray(realizationData)) {
+      let latestDate = null;
+      realizationData.forEach((item) => {
+        if (item.created_at) {
+          const itemDate = new Date(item.created_at);
+          if (!latestDate || itemDate > latestDate) {
+            latestDate = itemDate;
+          }
+        }
+        // Cek juga child
+        if (item.child && Array.isArray(item.child)) {
+          item.child.forEach((child) => {
+            if (child.created_at) {
+              const childDate = new Date(child.created_at);
+              if (!latestDate || childDate > latestDate) {
+                latestDate = childDate;
+              }
+            }
+          });
+        }
+      });
+      return latestDate;
+    }
+
+    // Jika data adalah object
+    return realizationData.created_at ? new Date(realizationData.created_at) : null;
+  };
+
   const getTotalRealization = async () => {
     const res = await axios.get(`realization/total`);
     return res.data.data;
@@ -225,29 +292,6 @@ export default function RealisasiKeuangan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, filter]);
 
-  const importRealization = async (e) => {
-    const formData = new FormData();
-    formData.append('file', e.target.files[0]);
-    await axios
-      .post(`realization/import`, formData)
-      .then(() => {
-        setStatus(true);
-        handleSnackbar('Berhasil Import Realisasi.');
-      })
-      .catch((xhr) => {
-        // console.log(xhr.response);
-        const err = xhr.response;
-        if (err.statusText === 'Unprocessable Content') {
-          handleSnackbar('Format file wajib berupa Excel (xlsx).');
-        } else {
-          handleSnackbar('Gagal Import Realisasi.');
-        }
-      })
-      .finally(() => {
-        e.target.value = '';
-      });
-  };
-
   const importMinistry = async (e) => {
     const formData = new FormData();
     formData.append('file', e.target.files[0]);
@@ -331,7 +375,7 @@ export default function RealisasiKeuangan() {
   return (
     <Page title="Realisasi Keuangan" background="bg-new.webp">
       <Container maxWidth="xl">
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
           <Stack>
             <Typography variant="h4" color="#000" gutterBottom>
               Deputi Bidang Kewirausahaan
@@ -349,42 +393,28 @@ export default function RealisasiKeuangan() {
       </Container>
       {data !== undefined && complete ? (
         <Container maxWidth="xl">
-          {/* <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent={data.periode.length > 0 ? 'space-between' : 'flex-end'}
-            spacing={1}
-            sx={{ mb: 5 }}
-          >
-            {data.periode.length > 0 && (
-              <Typography variant="body2" color="#fff">
-                Status Data :{' '}
-                {DateFormat(
-                  `${data.realization.date.substr(6, 4)}-${data.realization.date.substr(
-                    3,
-                    2
-                  )}-${data.realization.date.substr(0, 2)}`
-                )}
-              </Typography>
-            )}
-            {user !== null && ['superadmin', 'realisasi'].includes(user.role) && (
-              <>
-                <Button for="realization" variant="contained" startIcon={<FileUploadOutlined />} component="label">
-                  Import Realisasi
-                  <input
-                    id="realization"
-                    type="file"
-                    accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    onChange={importRealization}
-                    hidden
-                  />
-                </Button>
-                <Button variant="contained" onClick={() => setOpen(true)}>
-                  Tambah Realisasi
-                </Button>
-              </>
-            )}
-          </Stack> */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} mb={3}>
+            {/* {data.periode.length > 0 && ( */}
+            <Typography variant="body2" color="#000">
+              Status Data :{' '}
+              {realization?.data && realization.data.length > 0
+                ? formatDateTimeIndonesia(
+                    realization.data.reduce((latest, item) => {
+                      const itemDate = new Date(item.created_at);
+                      return !latest || itemDate > new Date(latest) ? item.created_at : latest;
+                    }, null)
+                  )
+                : data.realization.date
+                ? DateFormat(
+                    `${data.realization.date.substr(6, 4)}-${data.realization.date.substr(
+                      3,
+                      2
+                    )}-${data.realization.date.substr(0, 2)}`
+                  )
+                : '-'}
+            </Typography>
+            {/* )} */}
+          </Stack>
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={4}>
               <BankingCurrentBalance
